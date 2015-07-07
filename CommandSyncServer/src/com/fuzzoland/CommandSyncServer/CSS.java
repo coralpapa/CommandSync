@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.plugin.Plugin;
 
 import com.fuzzoland.CommandSyncServer.Metrics.Graph;
@@ -27,10 +28,10 @@ public class CSS extends Plugin {
 
 	public ServerSocket server;
 	public Set<String> c = Collections.synchronizedSet(new HashSet<String>());
-	public List<String> oq = Collections.synchronizedList(new ArrayList<String>());
+	public static List<String> oq = Collections.synchronizedList(new ArrayList<String>());
 	public Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
 	public Map<String, Integer> qc = Collections.synchronizedMap(new HashMap<String, Integer>());
-	public String spacer = "@#@";
+	public static String spacer = "@#@";
 	public Debugger debugger;
 	
 	public void onEnable() {
@@ -72,6 +73,7 @@ public class CSS extends Plugin {
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
+        ProxyServer.getInstance().getPluginManager().registerCommand(this, new CommandSynchronize());
 	}
 	
 	public void onDisable() {
