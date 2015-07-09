@@ -1,8 +1,9 @@
 package com.fuzzoland.CommandSyncServer;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
-public class ClientListener extends Thread {
+public class ClientListener implements Runnable {
 
 	private CSS plugin;
 	private Integer heartbeat;
@@ -15,12 +16,10 @@ public class ClientListener extends Thread {
 	}
 
 	public void run() {
-		while(true) {
-			try {
-				new ClientHandler(plugin, plugin.server.accept(), heartbeat, pass).start();
-			} catch(IOException e) {
-				e.printStackTrace();
-			}
-		}
+        try {
+            this.plugin.getProxy().getScheduler().schedule(this.plugin, new ClientHandler(this.plugin, this.plugin.server.accept(), heartbeat, pass), 0, heartbeat, TimeUnit.MILLISECONDS);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 	}
 }

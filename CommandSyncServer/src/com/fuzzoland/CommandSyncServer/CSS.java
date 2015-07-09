@@ -1,39 +1,26 @@
 package com.fuzzoland.CommandSyncServer;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
+import com.fuzzoland.CommandSyncServer.Metrics.Graph;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.plugin.Plugin;
 
-import com.fuzzoland.CommandSyncServer.Metrics.Graph;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 public class CSS extends Plugin {
 
-	public ServerSocket server;
+    public static List<String> oq = Collections.synchronizedList(new ArrayList<String>());
+    public static String spacer = "@#@";
+    public ServerSocket server;
 	public Set<String> c = Collections.synchronizedSet(new HashSet<String>());
-	public static List<String> oq = Collections.synchronizedList(new ArrayList<String>());
 	public Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
 	public Map<String, Integer> qc = Collections.synchronizedMap(new HashMap<String, Integer>());
-	public static String spacer = "@#@";
 	public Debugger debugger;
-	
+
 	public void onEnable() {
 		String[] data = loadConfig();
 		if(data[3].equals("UNSET")) {
@@ -43,8 +30,8 @@ public class CSS extends Plugin {
 		try {
 			server = new ServerSocket(Integer.parseInt(data[1]), 50, InetAddress.getByName(data[0]));
 			debugger.debug("Opened server on " + data[0] + ":" + data[1] + ".");
-			new ClientListener(this, Integer.parseInt(data[2]), data[3]).start();
-		} catch(Exception e) {
+            this.getProxy().getScheduler().schedule(this, new ClientListener(this, Integer.parseInt(data[2]), data[3]), 0, 100, TimeUnit.MILLISECONDS);
+        } catch(Exception e) {
 			e.printStackTrace();
 		}
 		loadData();

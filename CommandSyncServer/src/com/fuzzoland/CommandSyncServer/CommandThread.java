@@ -1,10 +1,10 @@
 package com.fuzzoland.CommandSyncServer;
 
-import java.util.List;
-
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
-public class CommandThread extends Thread {
+import java.util.List;
+
+public class CommandThread implements Runnable {
 
 	private CSS plugin;
 	private ProxiedPlayer player;
@@ -19,21 +19,15 @@ public class CommandThread extends Thread {
 	}
 	
 	public void run() {
-		while(true) {
-			try {
-				for(String command : commands) {
-					player.chat(command);
-					plugin.debugger.debug("Ran command " + command + " for player " + name + ".");
-				}
-				plugin.pq.remove(name);
-				return;
-			} catch(IllegalStateException e1) {
-				try {
-					sleep(1000);
-				} catch(InterruptedException e2) {
-					e2.printStackTrace();
-				}
-			}
-		}
+        try {
+            for (String command : commands) {
+                player.chat(command);
+                plugin.debugger.debug("Ran command " + command + " for player " + name + ".");
+            }
+            plugin.pq.remove(name);
+            return;
+        } catch (IllegalStateException e1) {
+            e1.printStackTrace();
+        }
 	}
 }

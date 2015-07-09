@@ -9,8 +9,8 @@ import java.util.Calendar;
 
 public class Debugger {
 
+    private final Boolean log;
     private PrintStream ps;
-    private Boolean log;
     
     public Debugger(CSS plugin, Boolean log) {
         this.log = log;
