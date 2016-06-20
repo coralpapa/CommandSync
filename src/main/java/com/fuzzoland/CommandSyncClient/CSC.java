@@ -40,7 +40,7 @@ public class CSC extends JavaPlugin {
 	
 	public void onDisable() {
 		saveData();
-        debugger.close();
+		debugger.close();
 	}
 
 	private String[] loadConfig() {

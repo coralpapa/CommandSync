@@ -13,9 +13,9 @@ import java.util.concurrent.TimeUnit;
 
 public class CSS extends Plugin {
 
-    public static List<String> oq = Collections.synchronizedList(new ArrayList<String>());
-    public static String spacer = "@#@";
-    public ServerSocket server;
+  public static List<String> oq = Collections.synchronizedList(new ArrayList<String>());
+  public static String spacer = "@#@";
+	public ServerSocket server;
 	public Set<String> c = Collections.synchronizedSet(new HashSet<String>());
 	public Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
 	public Map<String, Integer> qc = Collections.synchronizedMap(new HashMap<String, Integer>());
