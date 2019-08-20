@@ -1,7 +1,5 @@
 package com.fuzzoland.CommandSyncClient;
 
-import org.apache.commons.lang.WordUtils;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -18,24 +16,24 @@ public class CommandSynchronize implements CommandExecutor {
 		if(sender.hasPermission("sync.use")) {
 			if(args.length >= 0) {
 				if(args.length <= 2) {
-					sender.sendMessage(ChatColor.BLUE + "CommandSync by YoFuzzy3");
+					sender.sendMessage(plugin.getLocale().getString("HelpAuthors"));
 					if(args.length >= 1) {
 						if(args[0].equalsIgnoreCase("console")){
-							sender.sendMessage(ChatColor.GREEN + "/sync console <server> <command args...>");
-							sender.sendMessage(ChatColor.GREEN + "/sync console all <command args...>");
-							sender.sendMessage(ChatColor.GREEN + "/sync console bungee <command args...>");
+							sender.sendMessage(plugin.getLocale().getString("HelpCommands8"));
+							sender.sendMessage(plugin.getLocale().getString("HelpCommands7"));
+							sender.sendMessage(plugin.getLocale().getString("HelpCommands6"));
 						} else if(args[0].equalsIgnoreCase("player")) {
-							sender.sendMessage(ChatColor.GREEN + "/sync player <player> <command args...>");
-							sender.sendMessage(ChatColor.GREEN + "/sync player all <command args...>");
+							sender.sendMessage(plugin.getLocale().getString("HelpCommands5"));
+							sender.sendMessage(plugin.getLocale().getString("HelpCommands4"));
 						} else {
-							sender.sendMessage(ChatColor.RED + "Type /sync for help.");
+							sender.sendMessage(plugin.getLocale().getString("HelpCommands9"));
 						}
 					} else {
-						sender.sendMessage(ChatColor.GREEN + "/sync console");
-						sender.sendMessage(ChatColor.GREEN + "/sync player");
-						sender.sendMessage(ChatColor.BLUE + "Type the command for more info.");
+						sender.sendMessage(plugin.getLocale().getString("HelpCommands3"));
+						sender.sendMessage(plugin.getLocale().getString("HelpCommands2"));
+						sender.sendMessage(plugin.getLocale().getString("HelpCommands1"));
 					}
-					sender.sendMessage(ChatColor.BLUE + "Visit www.spigotmc.org/resources/commandsync.115 for help.");
+					sender.sendMessage(plugin.getLocale().getString("HelpLink"));
 				} else if(args.length >= 3) {
 					if(args[0].equalsIgnoreCase("console") || args[0].equalsIgnoreCase("player")) {
 					    String[] newArgs = new String[3];
@@ -55,25 +53,38 @@ public class CommandSynchronize implements CommandExecutor {
 						    makeData(newArgs, true, sender);
 						}
 					} else {
-						sender.sendMessage(ChatColor.RED + "Type /sync for help!");
+						sender.sendMessage(plugin.getLocale().getString("HelpCommands9"));
 					}
 				}
 			}
 		} else {
-			sender.sendMessage(ChatColor.RED + "You do not have permission to use that command.");
+			sender.sendMessage(plugin.getLocale().getString("NoPerm"));
 		}
 		return true;
 	}
 	
 	private void makeData(String[] args, Boolean single, CommandSender sender) {
 		String data;
-		String message = ChatColor.GREEN + "Syncing command /" + args[2].replaceAll("\\+", " ") + " to " + args[0];
+		String message;
+		if(args[0].equalsIgnoreCase("console")) {
+			if(args[1].equalsIgnoreCase("all")) {
+				message = plugin.getLocale().getString("SyncingCommand", args[2].replaceAll("\\+", " "),  plugin.getLocale().getString("SyncConsoleAll"));
+			} else {
+				message = plugin.getLocale().getString("SyncingCommand", args[2].replaceAll("\\+", " "),  plugin.getLocale().getString("SyncConsole", args[1]));
+			}
+		} else if(args[0].equalsIgnoreCase("bungee")) {
+			message = plugin.getLocale().getString("SyncingCommand", args[2].replaceAll("\\+", " "),  plugin.getLocale().getString("SyncConsole", args[1]));
+		} else {
+			if(args[1].equalsIgnoreCase("all")) {
+				message = plugin.getLocale().getString("SyncingCommand", args[2].replaceAll("\\+", " "),  plugin.getLocale().getString("SyncPlayerAll"));
+			} else {
+				message = plugin.getLocale().getString("SyncingCommand", args[2].replaceAll("\\+", " "),  plugin.getLocale().getString("SyncPlayer", args[1]));
+			}
+		}
 		if(single) {
 		    data = args[0].toLowerCase() + plugin.spacer + "single" + plugin.spacer + args[2] + plugin.spacer + args[1];
-			message = message + " [" + args[1] + "]...";
 		} else {
 		    data = args[0].toLowerCase() + plugin.spacer + args[1].toLowerCase() + plugin.spacer + args[2];
-			message = message + " [" + WordUtils.capitalizeFully(args[1]) + "]...";
 		}
 		plugin.oq.add(data);
 		sender.sendMessage(message);

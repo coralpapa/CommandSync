@@ -1,40 +1,68 @@
 package com.fuzzoland.CommandSyncServer;
 
-import com.fuzzoland.CommandSyncServer.Metrics.Graph;
-import net.md_5.bungee.api.ProxyServer;
-import net.md_5.bungee.api.plugin.Plugin;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.logging.Logger;
+
+import com.fuzzoland.CommandSyncServer.Metrics.Graph;
+import net.md_5.bungee.api.plugin.Plugin;
 
 public class CSS extends Plugin {
 
-  public static List<String> oq = Collections.synchronizedList(new ArrayList<String>());
-  public static String spacer = "@#@";
 	public ServerSocket server;
 	public Set<String> c = Collections.synchronizedSet(new HashSet<String>());
+	public List<String> oq = Collections.synchronizedList(new ArrayList<String>());
 	public Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
 	public Map<String, Integer> qc = Collections.synchronizedMap(new HashMap<String, Integer>());
+	public String spacer = "@#@";
 	public Debugger debugger;
+	private Locale loc;
+	private boolean remove;
+	public Logger logger = Logger.getLogger("CommandSync");
+
+	public Locale getLocale() {
+		return loc;
+	}
+
+	public Logger getLogger() {
+		return logger;
+	}
 
 	public void onEnable() {
 		String[] data = loadConfig();
 		if(data[3].equals("UNSET")) {
-		    debugger.debug("!!! THE CONFIG FILE CONTAINS UNSET VALUES - YOU MUST FIX THEM BEFORE THE PLUGIN WILL WORK !!! ");
+			logger.warning(loc.getString("UnsetValues"));
 			return;
 		}
 		try {
 			server = new ServerSocket(Integer.parseInt(data[1]), 50, InetAddress.getByName(data[0]));
-			debugger.debug("Opened server on " + data[0] + ":" + data[1] + ".");
-            this.getProxy().getScheduler().schedule(this, new ClientListener(this, Integer.parseInt(data[2]), data[3]), 0, 100, TimeUnit.MILLISECONDS);
-        } catch(Exception e) {
+			logger.info(loc.getString("OpenOn", data[0], data[1]));
+			//ConsoleCommandSender.getInstance().sendMessage(loc.getString("OpenOn", data[0], data[1]));
+			new ClientListener(this, Integer.parseInt(data[2]), data[3]).start();
+		} catch(Exception e) {
 			e.printStackTrace();
 		}
-		loadData();
+		try {
+			workData();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		try {
 		    Metrics metrics = new Metrics(this);
 		    Graph graph1 = metrics.createGraph("Total queries sent");
@@ -60,7 +88,19 @@ public class CSS extends Plugin {
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
-        ProxyServer.getInstance().getPluginManager().registerCommand(this, new CommandSynchronize());
+	}
+	
+	private void workData() throws IOException {
+		File folder = getDataFolder();
+		File data = new File(folder + File.separator + "data.txt");
+        boolean remove = this.remove;
+        if (remove == true) {
+        	if(data.delete()) {
+    			logger.info(loc.getString("DataRemoved"));
+			} else logger.info(loc.getString("DataRemoveNotFound")); 
+        } else {
+    		loadData();
+        }
 	}
 	
 	public void onDisable() {
@@ -70,7 +110,7 @@ public class CSS extends Plugin {
 	
 	private String[] loadConfig() {
 		String[] defaults = new String[] {
-			"ip=localhost", "port=9190", "heartbeat=1000", "pass=UNSET", "debug=false"
+			"ip=localhost", "port=9190", "heartbeat=1000", "pass=UNSET", "debug=false", "removedata=false", "lang=en_US"
 		};
 		String[] data = new String[defaults.length];
 		try {
@@ -101,7 +141,10 @@ public class CSS extends Plugin {
 			}
 			ps.close();
 			debugger = new Debugger(this, Boolean.valueOf(data[4]));
-			debugger.debug("Configuration file loaded.");
+            remove = Boolean.valueOf(data[5]);
+    		loc = new Locale(this, String.valueOf(data[6]));
+    		loc.init();
+			logger.info(loc.getString("ConfigLoaded"));
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
@@ -125,7 +168,7 @@ public class CSS extends Plugin {
 				ps.println("qc:" + e.getKey() + spacer + String.valueOf(e.getValue()));
 			}
 			ps.close();
-			debugger.debug("All data saved.");
+			logger.info(loc.getString("DataSaved"));
 		}catch(IOException e){
 			e.printStackTrace();
 		}
@@ -157,12 +200,12 @@ public class CSS extends Plugin {
 						}
 						l = br.readLine();
 					}
-					debugger.debug("All data loaded.");
+					logger.info(loc.getString("DataLoaded"));
 				} finally {
 					br.close();
 				}
 			} else {
-			    debugger.debug("A data file was not found. If this is your first start-up with the plugin, this is normal.");
+				logger.info(loc.getString("DataNotfound"));
 			}
 		} catch(IOException e) {
 			e.printStackTrace();

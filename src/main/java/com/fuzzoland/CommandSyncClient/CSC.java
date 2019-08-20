@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class CSC extends JavaPlugin {
@@ -21,11 +22,13 @@ public class CSC extends JavaPlugin {
 	public Integer qc = 0;
 	public String spacer = "@#@";
 	public Debugger debugger;
+	private Locale loc;
+	private boolean remove;
 	
 	public void onEnable() {
 		String[] data = loadConfig();
 		if(data[3].equals("UNSET") || data[4].equals("UNSET")) {
-			debugger.debug("THE CONFIG FILE CONTAINS UNSET VALUES - YOU MUST FIX THEM BEFORE THE PLUGIN WILL WORK !!! ");
+			Bukkit.getConsoleSender().sendMessage(loc.getString("UnsetValues"));
 			return;
 		}
 		try {
@@ -34,18 +37,42 @@ public class CSC extends JavaPlugin {
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
-		loadData();
+		try {
+			workData();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		getCommand("Sync").setExecutor(new CommandSynchronize(this));
+		
 	}
 	
 	public void onDisable() {
 		saveData();
-		debugger.close();
+        debugger.close();
+		loc = null;
 	}
-
-	private String[] loadConfig() {
+	
+	public Locale getLocale() {
+		return loc;
+	}
+	
+	private void workData() throws IOException {
+		File folder = getDataFolder();
+		File data = new File(folder + File.separator + "data.txt");
+        boolean remove = this.remove;
+        if (remove == true) {
+        	if(data.delete()){
+        		Bukkit.getConsoleSender().sendMessage(loc.getString("DataRemoved"));
+			} else Bukkit.getConsoleSender().sendMessage(loc.getString("DataRemoveNotFound"));
+        } else {
+    		loadData();
+        }
+	}
+	
+	
+	public String[] loadConfig() {
 		String[] defaults = new String[] {
-			"ip=localhost", "port=9190", "heartbeat=1000", "name=UNSET", "pass=UNSET", "debug=false"
+			"ip=localhost", "port=9190", "heartbeat=1000", "name=UNSET", "pass=UNSET", "debug=false", "removedata=false", "lang=en_US"
 		};
 		String[] data = new String[defaults.length];
         try {
@@ -76,7 +103,10 @@ public class CSC extends JavaPlugin {
             }
             ps.close();
             debugger = new Debugger(this, Boolean.valueOf(data[5]));
-            debugger.debug("Configuration file loaded.");
+            remove = Boolean.valueOf(data[6]);
+    		loc = new Locale(this, String.valueOf(data[7]));
+    		loc.init();
+    		Bukkit.getConsoleSender().sendMessage(loc.getString("ConfigLoaded"));
         } catch(IOException e) {
             e.printStackTrace();
         }
@@ -92,7 +122,7 @@ public class CSC extends JavaPlugin {
 			}
 			ps.println("qc:" + String.valueOf(qc));
 			ps.close();
-			debugger.debug("All data saved.");
+			Bukkit.getConsoleSender().sendMessage(loc.getString("DataSaved"));
 		}catch(IOException e){
 			e.printStackTrace();
 		}
@@ -113,15 +143,16 @@ public class CSC extends JavaPlugin {
 						}
 						l = br.readLine();
 					}
-					debugger.debug("All data loaded.");
+					Bukkit.getConsoleSender().sendMessage(loc.getString("DataLoaded"));
 				} finally {
 					br.close();
 				}
 			} else {
-			    debugger.debug("A data file was not found. If this is your first start-up with the plugin, this is normal.");
+			    Bukkit.getConsoleSender().sendMessage(loc.getString("DataNotfound"));
 			}
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
+	
 }

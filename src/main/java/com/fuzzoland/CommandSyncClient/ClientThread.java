@@ -8,8 +8,6 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 public class ClientThread extends Thread {
 
@@ -23,7 +21,7 @@ public class ClientThread extends Thread {
 	private Integer heartbeat = 0;
 	private String name;
 	private String pass;
-	private String version = "2.3";
+	private String version = "2.5";
 	
 	public ClientThread(CSC plugin, InetAddress ip, Integer port, Integer heartbeat, String name, String pass) {
 		this.plugin = plugin;
@@ -41,7 +39,7 @@ public class ClientThread extends Thread {
 				out.println("heartbeat");
 				if(out.checkError()) {
 					connected = false;
-					plugin.debugger.debug("Lost connection to the server.");
+					Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("ConnectLost"));
 				} else {
 					try {
 						Integer size = plugin.oq.size();
@@ -51,19 +49,24 @@ public class ClientThread extends Thread {
 								count++;
 								String output = plugin.oq.get(i);
 								out.println(output);
-								plugin.debugger.debug("[" + socket.getInetAddress().getHostName() + ":" + socket.getPort() + "] " + "Sent output - " + output);
+								Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("SentOutput", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), output));
 							}
 							plugin.qc = count;
 						}
 						while(in.ready()) {
 							String input = in.readLine();
 							if(!input.equals("heartbeat")) {
-							    plugin.debugger.debug("[" + socket.getInetAddress().getHostName() + ":" + socket.getPort() + "] " + "Received input - " + input);
+								Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("ReceivedInput", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), input));
 								String[] data = input.split(plugin.spacer);
 								if(data[0].equals("console")) {
 									String command = data[2].replaceAll("\\+", " ");
-									safePerformCommand(Bukkit.getServer().getConsoleSender(), command, plugin);
-									plugin.debugger.debug("Ran command /" + command + ".");
+									Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+							            @Override
+							            public void run() {
+											Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), command);
+							            }
+							        }, 0);
+									Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("RanCommand", command));
 								}
 							}
 						}
@@ -96,35 +99,26 @@ public class ClientThread extends Thread {
 			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			out.println(name);
 			if(in.readLine().equals("n")) {
-			    plugin.debugger.debug("The name " + name + " is already connected.");
+				Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("NameError", name));
 			    socket.close();
 			    return;
 			}
 			out.println(pass);
 			if(in.readLine().equals("n")) {
-			    plugin.debugger.debug("The password you provided is invalid.");
+				Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("InvalidPassword"));
 			    socket.close();
 				return;
 			}
             out.println(version);
             if(in.readLine().equals("n")) {
-                plugin.debugger.debug("The client's version of " + version + " does not match the server's version of " + in.readLine() + ".");
+            	Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("VersionError", version, in.readLine()));
                 socket.close();
                 return;
             }
 			connected = true;
-			plugin.debugger.debug("Connected to " + ip.getHostName() + ":" + String.valueOf(port) + " under name " + name + ".");
+			Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("ConnectInfo", ip.getHostName(), String.valueOf(port), name));
 		} catch(IOException e) {
-		    plugin.debugger.debug("Could not connect to the server.");
+			Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("NoConnect"));
 		}
 	}
-
-  public static void safePerformCommand(final CommandSender sender, final String command, CSC plugin) {
-    // PaperSpigot will complain about async command execution without this. See http://bit.ly/1oSiM6C
-    if (Bukkit.getServer().isPrimaryThread()){
-      Bukkit.getServer().dispatchCommand(sender, command);
-    } else {
-      Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getServer().dispatchCommand(sender, command)); // This uses lambdas, in Java 8+ only
-    }
-  }
 }

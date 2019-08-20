@@ -1,44 +1,29 @@
-/*
- * Copyright 2011-2013 Tyler Blair. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification, are
- * permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this list of
- * conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this list
- * of conditions and the following disclaimer in the documentation and/or other materials
- * provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ''AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * The views and conclusions contained in the software and documentation are those of the
- * authors and contributors and should not be interpreted as representing official policies,
- * either expressed or implied, of anybody else.
- */
 package com.fuzzoland.CommandSyncServer;
 
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.plugin.PluginDescription;
-import net.md_5.bungee.api.scheduler.ScheduledTask;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
 
@@ -102,7 +87,7 @@ public class Metrics {
 	/**
 	 * The scheduled task
 	 */
-	private ScheduledTask thread = null;
+	private Thread thread = null;
 
 	public Metrics(final Plugin plugin) throws IOException {
 		if (plugin == null) {
@@ -134,121 +119,6 @@ public class Metrics {
 		// Load the guid then
 		guid = properties.getProperty("guid");
 		debug = Boolean.parseBoolean(properties.getProperty("debug"));
-	}
-
-	/**
-	 * GZip compress a string of bytes
-	 *
-	 * @param input
-	 * @return
-	 */
-	public static byte[] gzip(String input) {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		GZIPOutputStream gzos = null;
-
-		try {
-			gzos = new GZIPOutputStream(baos);
-			gzos.write(input.getBytes("UTF-8"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (gzos != null) try {
-				gzos.close();
-			} catch (IOException ignore) {
-			}
-		}
-
-		return baos.toByteArray();
-	}
-
-	/**
-	 * Appends a json encoded key/value pair to the given string builder.
-	 *
-	 * @param json
-	 * @param key
-	 * @param value
-	 * @throws UnsupportedEncodingException
-	 */
-	private static void appendJSONPair(StringBuilder json, String key, String value) throws UnsupportedEncodingException {
-		boolean isValueNumeric = false;
-
-		try {
-			if (value.equals("0") || !value.endsWith("0")) {
-				Double.parseDouble(value);
-				isValueNumeric = true;
-			}
-		} catch (NumberFormatException e) {
-			isValueNumeric = false;
-		}
-
-		if (json.charAt(json.length() - 1) != '{') {
-			json.append(',');
-		}
-
-		json.append(escapeJSON(key));
-		json.append(':');
-
-		if (isValueNumeric) {
-			json.append(value);
-		} else {
-			json.append(escapeJSON(value));
-		}
-	}
-
-	/**
-	 * Escape a string to create a valid JSON string
-	 *
-	 * @param text
-	 * @return
-	 */
-	private static String escapeJSON(String text) {
-		StringBuilder builder = new StringBuilder();
-
-		builder.append('"');
-		for (int index = 0; index < text.length(); index++) {
-			char chr = text.charAt(index);
-
-			switch (chr) {
-				case '"':
-				case '\\':
-					builder.append('\\');
-					builder.append(chr);
-					break;
-				case '\b':
-					builder.append("\\b");
-					break;
-				case '\t':
-					builder.append("\\t");
-					break;
-				case '\n':
-					builder.append("\\n");
-					break;
-				case '\r':
-					builder.append("\\r");
-					break;
-				default:
-					if (chr < ' ') {
-						String t = "000" + Integer.toHexString(chr);
-						builder.append("\\u" + t.substring(t.length() - 4));
-					} else {
-						builder.append(chr);
-					}
-					break;
-			}
-		}
-		builder.append('"');
-
-		return builder.toString();
-	}
-
-	/**
-	 * Encode text as UTF-8
-	 *
-	 * @param text the text to encode
-	 * @return the encoded text, as UTF-8
-	 */
-	private static String urlEncode(final String text) throws UnsupportedEncodingException {
-		return URLEncoder.encode(text, "UTF-8");
 	}
 
 	/**
@@ -306,47 +176,55 @@ public class Metrics {
 			}
 
 			// Begin hitting the server with glorious data
-			thread = plugin.getProxy().getScheduler().schedule(plugin, new Runnable() {
+			thread = new Thread(new Runnable() {
 
 				private boolean firstPost = true;
 
 				private long nextPost = 0L;
 
 				public void run() {
-					if (nextPost == 0L || System.currentTimeMillis() > nextPost) {
-						try {
-							// This has to be synchronized or it can collide with the disable method.
-							synchronized (optOutLock) {
-								// Disable Task, if it is running and the server owner decided to opt-out
-								if (isOptOut() && thread != null) {
-									ScheduledTask temp = thread;
-									thread = null;
-									// Tell all plotters to stop gathering information.
-									for (Graph graph : graphs) {
-										graph.onOptOut();
+					while (thread != null) {
+						if (nextPost == 0L || System.currentTimeMillis() > nextPost) {
+							try {
+								// This has to be synchronized or it can collide with the disable method.
+								synchronized (optOutLock) {
+									// Disable Task, if it is running and the server owner decided to opt-out
+									if (isOptOut() && thread != null) {
+										Thread temp = thread;
+										thread = null;
+										// Tell all plotters to stop gathering information.
+										for (Graph graph : graphs) {
+											graph.onOptOut();
+										}
+										temp.interrupt(); // interrupting ourselves
+										return;
 									}
-									temp.cancel(); // interrupting ourselves
-									return;
+								}
+
+								// We use the inverse of firstPost because if it is the first time we are posting,
+								// it is not a interval ping, so it evaluates to FALSE
+								// Each time thereafter it will evaluate to TRUE, i.e PING!
+								postPlugin(!firstPost);
+
+								// After the first post we set firstPost to false
+								// Each post thereafter will be a ping
+								firstPost = false;
+								nextPost = System.currentTimeMillis() + (PING_INTERVAL * 60 * 1000);
+							} catch (IOException e) {
+								if (debug) {
+									System.out.println("[Metrics] " + e.getMessage());
 								}
 							}
+						}
 
-							// We use the inverse of firstPost because if it is the first time we are posting,
-							// it is not a interval ping, so it evaluates to FALSE
-							// Each time thereafter it will evaluate to TRUE, i.e PING!
-							postPlugin(!firstPost);
-
-							// After the first post we set firstPost to false
-							// Each post thereafter will be a ping
-							firstPost = false;
-							nextPost = System.currentTimeMillis() + (PING_INTERVAL * 60 * 1000);
-						} catch (IOException e) {
-							if (debug) {
-								System.out.println("[Metrics] " + e.getMessage());
-							}
+						try {
+							Thread.sleep(100L);
+						} catch (InterruptedException e) {
 						}
 					}
 				}
-			}, 0, 100, TimeUnit.MILLISECONDS);
+			}, "MCStats / Plugin Metrics");
+			thread.start();
 
 			return true;
 		}
@@ -410,7 +288,7 @@ public class Metrics {
 
 			// Disable Task, if it is running
 			if (thread != null) {
-				thread.cancel();
+				thread.interrupt();
 				thread = null;
 			}
 		}
@@ -589,6 +467,31 @@ public class Metrics {
 	}
 
 	/**
+	 * GZip compress a string of bytes
+	 *
+	 * @param input
+	 * @return
+	 */
+	public static byte[] gzip(String input) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		GZIPOutputStream gzos = null;
+
+		try {
+			gzos = new GZIPOutputStream(baos);
+			gzos.write(input.getBytes("UTF-8"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (gzos != null) try {
+				gzos.close();
+			} catch (IOException ignore) {
+			}
+		}
+
+		return baos.toByteArray();
+	}
+
+	/**
 	 * Check if mineshafter is present. If it is, we need to bypass it to send POST requests
 	 *
 	 * @return true if mineshafter is installed on the server
@@ -600,6 +503,96 @@ public class Metrics {
 		} catch (Exception e) {
 			return false;
 		}
+	}
+
+	/**
+	 * Appends a json encoded key/value pair to the given string builder.
+	 *
+	 * @param json
+	 * @param key
+	 * @param value
+	 * @throws UnsupportedEncodingException
+	 */
+	private static void appendJSONPair(StringBuilder json, String key, String value) throws UnsupportedEncodingException {
+		boolean isValueNumeric = false;
+
+		try {
+			if (value.equals("0") || !value.endsWith("0")) {
+				Double.parseDouble(value);
+				isValueNumeric = true;
+			}
+		} catch (NumberFormatException e) {
+			isValueNumeric = false;
+		}
+
+		if (json.charAt(json.length() - 1) != '{') {
+			json.append(',');
+		}
+
+		json.append(escapeJSON(key));
+		json.append(':');
+
+		if (isValueNumeric) {
+			json.append(value);
+		} else {
+			json.append(escapeJSON(value));
+		}
+	}
+
+	/**
+	 * Escape a string to create a valid JSON string
+	 *
+	 * @param text
+	 * @return
+	 */
+	private static String escapeJSON(String text) {
+		StringBuilder builder = new StringBuilder();
+
+		builder.append('"');
+		for (int index = 0; index < text.length(); index++) {
+			char chr = text.charAt(index);
+
+			switch (chr) {
+			case '"':
+			case '\\':
+				builder.append('\\');
+				builder.append(chr);
+				break;
+			case '\b':
+				builder.append("\\b");
+				break;
+			case '\t':
+				builder.append("\\t");
+				break;
+			case '\n':
+				builder.append("\\n");
+				break;
+			case '\r':
+				builder.append("\\r");
+				break;
+			default:
+				if (chr < ' ') {
+					String t = "000" + Integer.toHexString(chr);
+					builder.append("\\u" + t.substring(t.length() - 4));
+				} else {
+					builder.append(chr);
+				}
+				break;
+			}
+		}
+		builder.append('"');
+
+		return builder.toString();
+	}
+
+	/**
+	 * Encode text as UTF-8
+	 *
+	 * @param text the text to encode
+	 * @return the encoded text, as UTF-8
+	 */
+	private static String urlEncode(final String text) throws UnsupportedEncodingException {
+		return URLEncoder.encode(text, "UTF-8");
 	}
 
 	/**
