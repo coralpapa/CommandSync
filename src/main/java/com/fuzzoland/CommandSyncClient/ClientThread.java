@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 
 public class ClientThread extends Thread {
 
@@ -60,12 +61,7 @@ public class ClientThread extends Thread {
 								String[] data = input.split(plugin.spacer);
 								if(data[0].equals("console")) {
 									String command = data[2].replaceAll("\\+", " ");
-									Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
-							            @Override
-							            public void run() {
-											Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), command);
-							            }
-							        }, 0);
+									safePerformCommand(Bukkit.getServer().getConsoleSender(), command, plugin);
 									Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("RanCommand", command));
 								}
 							}
@@ -121,4 +117,13 @@ public class ClientThread extends Thread {
 			Bukkit.getConsoleSender().sendMessage(plugin.getLocale().getString("NoConnect"));
 		}
 	}
+	
+    public static void safePerformCommand(final CommandSender sender, final String command, CSC plugin) {
+	  // PaperSpigot will complain about async command execution without this. See http://bit.ly/1oSiM6C
+      if (Bukkit.getServer().isPrimaryThread()){
+    	  Bukkit.getServer().dispatchCommand(sender, command);
+      } else {
+    	  Bukkit.getScheduler().runTask(plugin, () -> Bukkit.getServer().dispatchCommand(sender, command)); // This uses lambdas, in Java 8+ only
+      }
+    }
 }
