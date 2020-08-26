@@ -32,15 +32,22 @@ import org.bukkit.ChatColor;
  */
 public class Locale {
 
+	private static Locale instance;
     private final HashMap<String, MessageFormat> messageCache = new HashMap<>();
     private final Properties locale = new Properties();
     private File localeFile;
-    private String loc;
-
-    CSC instance;
-    public Locale(CSC plugin, String string) {
-    	instance = plugin;
-    	loc = string;
+    
+    public static Locale getInstance() {
+    	
+    	if(instance == null) {
+    		
+    		instance = new Locale();
+    		instance.init();
+    		
+    	}
+    	
+    	return instance;
+    	
     }
 
     /**
@@ -48,23 +55,37 @@ public class Locale {
      * Otherwise, you will receive Key "key" does not exists!
      */
     public void init() {
+    	
         this.locale.clear();
-        String loc = this.loc;
-        this.localeFile = new File(instance.getDataFolder(), loc + ".properties");
         
-        if (this.saveLocale(loc)) {
+        this.localeFile = new File(CSC.getInstance().getDataFolder(), ConfigManager.getInstance().getLanauge() + ".properties");
+        
+        if (this.saveLocale(ConfigManager.getInstance().getLanauge())) {
+        	
             try (FileReader fr = new FileReader(this.localeFile)) {
+            	
                 this.locale.load(fr);
+                
             } catch (Exception ex) {
-            	instance.getLogger().log(Level.WARNING, "Failed to load " + loc + " locale!", ex);
+            	
+            	Debugger.getInstance().Log(Level.WARNING, "Failed to load " + ConfigManager.getInstance().getLanauge() + " locale!");
+            	
             }
+            
         } else {
+        	
             try {
-                this.locale.load(instance.getResource("en_US.properties"));
+            	
+                this.locale.load(CSC.getInstance().getResource("en_US.properties"));
+                
             } catch (IOException ex) {
-            	instance.getLogger().log(Level.WARNING, "Failed to load en_US locale!", ex);
+            	
+            	Debugger.getInstance().Log(Level.WARNING, "Failed to load en_US locale!", ex);
+            	
             }
+            
         }
+        
     }
 
     /**
@@ -151,38 +172,60 @@ public class Locale {
      * @is - Localization file name + .properties
      */
 	private boolean saveLocale(final String name) {
-        if (this.localeFile.exists()) {
-            return true;
-        }
-        File enFile = new File(instance.getDataFolder() + File.separator + "en_US.properties");
+		
+        if (this.localeFile.exists())  return true;
+        
+        File enFile = new File(CSC.getInstance().getDataFolder() + File.separator + "en_US.properties");
         String is = "/" + name + ".properties";
+        
         if (getClass().getResource(is) == null) {
-        	instance.getLogger().log(Level.WARNING, "Failed to save \"" + name + ".properties \"");
+        	
+        	Debugger.getInstance().Log(Level.WARNING, "Failed to save \"" + name + ".properties \"");
+        	
             if (!enFile.exists()){
-            try {
-                URI u = getClass().getResource("/en_US.properties").toURI();
-                FileSystem jarFS = FileSystems.newFileSystem(URI.create(u.toString().split("!")[0]), new HashMap<>());
-    			Files.copy(jarFS.getPath(u.toString().split("!")[1]), new File(instance.getDataFolder() + File.separator + "en_US.properties").toPath());
-    	        jarFS.close();
-    		} catch (IOException ex) {
-            	instance.getLogger().log(Level.WARNING, "Failed to save \"" + name + ".properties \"", ex);
-    		} catch (URISyntaxException e) {
-            	instance.getLogger().log(Level.WARNING, "Locale \"{0}\" does not exists!\"", name);
-    		}
-            return false;
+            	
+	            try {
+	            	
+	                URI u = getClass().getResource("/en_US.properties").toURI();
+	                FileSystem jarFS = FileSystems.newFileSystem(URI.create(u.toString().split("!")[0]), new HashMap<>());
+	    			Files.copy(jarFS.getPath(u.toString().split("!")[1]), new File(CSC.getInstance().getDataFolder() + File.separator + "en_US.properties").toPath());
+	    	        jarFS.close();
+	    	        
+	    		} catch (IOException ex) {
+	    			
+	    			Debugger.getInstance().Log(Level.WARNING, "Failed to save \"" + name + ".properties \"", ex);
+	            	
+	    		} catch (URISyntaxException e) {
+	    			
+	    			Debugger.getInstance().Log(Level.WARNING, "Locale \"{0}\" does not exists!\"", e);
+	            	
+	    		}
+	            
+	            return false;
+	            
             }
+            
             return false;
-        } else {    
-        try {
-            URI u = getClass().getResource(is).toURI();
-            FileSystem jarFS = FileSystems.newFileSystem(URI.create(u.toString().split("!")[0]), new HashMap<>());
-			Files.copy(jarFS.getPath(u.toString().split("!")[1]), new File(instance.getDataFolder() + File.separator + name + ".properties").toPath());
-	        jarFS.close();
-		} catch (IOException ex) {
-        	instance.getLogger().log(Level.WARNING, "Failed to save \"" + name + ".properties \"", ex);
-		} catch (URISyntaxException e) {
-        	instance.getLogger().log(Level.WARNING, "Locale \"{0}\" does not exists!\"", name);
-		}	
+            
+        } else {   
+        	
+	        try {
+	        	
+	            URI u = getClass().getResource(is).toURI();
+	            FileSystem jarFS = FileSystems.newFileSystem(URI.create(u.toString().split("!")[0]), new HashMap<>());
+				Files.copy(jarFS.getPath(u.toString().split("!")[1]), new File(CSC.getInstance().getDataFolder() + File.separator + name + ".properties").toPath());
+		        jarFS.close();
+		        
+			} catch (IOException ex) {
+				
+				Debugger.getInstance().Log(Level.WARNING, "Failed to save \"" + name + ".properties \"", ex);
+	        	
+			} catch (URISyntaxException e) {
+				
+				Debugger.getInstance().Log(Level.WARNING, "Locale \"{0}\" does not exists!\"", e);
+	        	
+			}
+	        
         }
         return true;
     }

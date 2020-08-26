@@ -1,26 +1,36 @@
 package com.fuzzoland.CommandSyncServer;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
 public class ClientListener extends Thread {
 
-	private CSS plugin;
 	private Integer heartbeat;
 	private String pass;
 
-	public ClientListener(CSS plugin, Integer heartbeat, String pass) {
-		this.plugin = plugin;
+	public ClientListener(Integer heartbeat, String pass) {
+		
 		this.heartbeat = heartbeat;
 		this.pass = pass;
+		
 	}
 
 	public void run() {
+		
 		while(true) {
+			
 			try {
-				new ClientHandler(plugin, plugin.server.accept(), heartbeat, pass).start();
+				
+				new ClientHandler(CSS.getInstance().server.accept(), heartbeat, pass).start();
+				
 			} catch(IOException e) {
-				e.printStackTrace();
+				
+				Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+				
 			}
+			
 		}
+		
 	}
+	
 }

@@ -18,197 +18,239 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.fuzzoland.CommandSyncServer.Metrics.Graph;
 import net.md_5.bungee.api.plugin.Plugin;
 
 public class CSS extends Plugin {
 
+	private static CSS instance;
 	public ServerSocket server;
-	public Set<String> c = Collections.synchronizedSet(new HashSet<String>());
-	public List<String> oq = Collections.synchronizedList(new ArrayList<String>());
-	public Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
-	public Map<String, Integer> qc = Collections.synchronizedMap(new HashMap<String, Integer>());
-	public String spacer = "@#@";
-	public Debugger debugger;
-	private Locale loc;
-	private boolean remove;
-	public Logger logger = Logger.getLogger("CommandSync");
-
-	public Locale getLocale() {
-		return loc;
-	}
-
-	public Logger getLogger() {
-		return logger;
-	}
+	private Set<String> c = Collections.synchronizedSet(new HashSet<String>());
+	private List<String> oq = Collections.synchronizedList(new ArrayList<String>());
+	private Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
+	private Map<String, Integer> qc = Collections.synchronizedMap(new HashMap<String, Integer>());
+	private String spacer = "@#@";
 
 	public void onEnable() {
-		String[] data = loadConfig();
-		if(data[3].equals("UNSET")) {
-			logger.warning(loc.getString("UnsetValues"));
-			return;
-		}
+		
+		this.instance = this;
+		
+		ConfigManager.getInstance();
+		
+		Debugger.getInstance();
+		
+		Locale.getInstance();
+		
 		try {
-			server = new ServerSocket(Integer.parseInt(data[1]), 50, InetAddress.getByName(data[0]));
-			logger.info(loc.getString("OpenOn", data[0], data[1]));
-			//ConsoleCommandSender.getInstance().sendMessage(loc.getString("OpenOn", data[0], data[1]));
-			new ClientListener(this, Integer.parseInt(data[2]), data[3]).start();
+			
+			server = new ServerSocket(ConfigManager.getInstance().getPort(), 50, InetAddress.getByName(ConfigManager.getInstance().getIP()));
+			
+			Debugger.getInstance().Log(Locale.getInstance().getString("OpenOn", ConfigManager.getInstance().getIP(), ConfigManager.getInstance().getPort() + ""));
+			
+			new ClientListener(ConfigManager.getInstance().getHeartBeat(), ConfigManager.getInstance().getPassword()).start();
+			
 		} catch(Exception e) {
-			e.printStackTrace();
+			
+			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			
 		}
+		
 		try {
+			
 			workData();
+			
 		} catch (IOException e1) {
-			e1.printStackTrace();
+
+			Debugger.getInstance().Log(Level.WARNING, e1.getMessage(), e1);
+			
 		}
-		try {
-		    Metrics metrics = new Metrics(this);
-		    Graph graph1 = metrics.createGraph("Total queries sent");
-		    graph1.addPlotter(new Metrics.Plotter() {
-				public int getValue() {
-					return oq.size();
-				}
-				public String getColumnName() {
-					return "Total queries sent";
-				}
-			});
-		    Graph graph2 = metrics.createGraph("Total servers linked");
-		    graph2.addPlotter(new Metrics.Plotter() {
-				public int getValue() {
-					return qc.keySet().size();
-				}
-				public String getColumnName() {
-					return "Total servers linked";
-				}
-			});
-		    metrics.start();
-		    getProxy().getPluginManager().registerListener(this, new EventListener(this));
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
+
+		getProxy().getPluginManager().registerListener(this, new EventListener());
+
 	}
 	
 	private void workData() throws IOException {
+		
 		File folder = getDataFolder();
 		File data = new File(folder + File.separator + "data.txt");
-        boolean remove = this.remove;
-        if (remove == true) {
+		
+        if(ConfigManager.getInstance().isDataRemoved()) {
+        	
         	if(data.delete()) {
-    			logger.info(loc.getString("DataRemoved"));
-			} else logger.info(loc.getString("DataRemoveNotFound")); 
+        		
+        		Debugger.getInstance().Log(Locale.getInstance().getString("DataRemoved"));
+    			
+			} else {
+				
+				Debugger.getInstance().Log(Locale.getInstance().getString("DataRemoveNotFound")); 
+			
+			}
+        	
         } else {
+        	
     		loadData();
+        
         }
+        
 	}
 	
 	public void onDisable() {
+		
 		saveData();
-		debugger.close();
-	}
 	
-	private String[] loadConfig() {
-		String[] defaults = new String[] {
-			"ip=localhost", "port=9190", "heartbeat=1000", "pass=UNSET", "debug=false", "removedata=false", "lang=en_US"
-		};
-		String[] data = new String[defaults.length];
-		try {
-		    File folder = getDataFolder();
-		    if(!folder.exists()) {
-		        folder.mkdir();
-		    }
-			File file = new File(folder, "config.txt");
-			if(!file.exists()) {
-				file.createNewFile();
-			}
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			for(int i = 0; i < defaults.length; i++) {
-			    String l = br.readLine();
-			    if(l == null || l.isEmpty()) {
-			        data[i] = defaults[i].split("=")[1];
-			    } else {
-			        data[i] = l.split("=")[1];
-			        defaults[i] = l;
-			    }
-			}
-	        br.close();
-	        file.delete();
-	        file.createNewFile();
-			PrintStream ps = new PrintStream(new FileOutputStream(file));
-			for(int i = 0; i < defaults.length; i++) {
-				ps.println(defaults[i]);
-			}
-			ps.close();
-			debugger = new Debugger(this, Boolean.valueOf(data[4]));
-            remove = Boolean.valueOf(data[5]);
-    		loc = new Locale(this, String.valueOf(data[6]));
-    		loc.init();
-			logger.info(loc.getString("ConfigLoaded"));
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
-		return data;
 	}
 	
 	private void saveData() {
+		
 		try {
+			
 			OutputStream os = new FileOutputStream(new File(getDataFolder(), "data.txt"));
 			PrintStream ps = new PrintStream(os);
+			
 			for(String s : oq) {
+				
 				ps.println("oq:" + s);
+				
 			}
+			
 			for(Entry<String, List<String>> e : pq.entrySet()) {
+				
 				String name = e.getKey();
+				
 				for(String command : e.getValue()) {
+					
 					ps.println("pq:" + name + spacer + command);
+					
 				}
+				
 			}
+			
 			for(Entry<String, Integer> e : qc.entrySet()) {
+				
 				ps.println("qc:" + e.getKey() + spacer + String.valueOf(e.getValue()));
+				
 			}
+			
 			ps.close();
-			logger.info(loc.getString("DataSaved"));
+			
+			Debugger.getInstance().Log(Locale.getInstance().getString("DataSaved"));
+			
 		}catch(IOException e){
-			e.printStackTrace();
+			
+			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			
 		}
+		
 	}
 	
 	private void loadData() {
+		
 		try {
+			
 			File file = new File(getDataFolder(), "data.txt");
+			
 			if(file.exists()) {
+				
 				BufferedReader br = new BufferedReader(new FileReader(file));
+				
 				try {
+					
 					String l = br.readLine();
+					
 					while(l != null) {
+						
 						if(l.startsWith("oq:")) {
+							
 							oq.add(new String(l.substring(3)));
+							
 						} else if(l.startsWith("pq:")) {
+							
 							String[] parts = new String(l.substring(3)).split(spacer);
+							
 							if(pq.containsKey(parts[0])) {
+								
 								List<String> commands = pq.get(parts[0]);
+								
 								commands.add(parts[1]);
+								
 								pq.put(parts[0], commands);
+								
 							} else {
+								
 								List<String> commands = new ArrayList<String>(Arrays.asList(parts[1]));
 								pq.put(parts[0], commands);
+								
 							}
+							
 						} else if(l.startsWith("qc:")) {
+							
 							String[] parts = new String(l.substring(3)).split(spacer);
 							qc.put(parts[0], Integer.parseInt(parts[1]));
+							
 						}
+						
 						l = br.readLine();
+						
 					}
-					logger.info(loc.getString("DataLoaded"));
+					
+					Debugger.getInstance().Log(Locale.getInstance().getString("DataLoaded"));
+					
 				} finally {
+					
 					br.close();
+					
 				}
+				
 			} else {
-				logger.info(loc.getString("DataNotfound"));
+				
+				Debugger.getInstance().Log(Locale.getInstance().getString("DataNotfound"));
+				
 			}
+			
 		} catch(IOException e) {
-			e.printStackTrace();
+			
+			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			
 		}
+		
 	}
+	
+	public static CSS getInstance() {
+		
+		return instance;
+		
+	}
+	
+	public String getSpacer() {
+		
+		return this.spacer;
+		
+	}
+	
+	public Map<String, List<String>> getPQ(){
+		
+		return this.pq;
+		
+	}
+	
+	public Set<String> getC() {
+		
+		return this.c;
+		
+	}
+	
+	public List<String> getOQ() {
+		
+		return this.oq;
+				
+	}
+	
+	public Map<String, Integer> getQC() {
+		
+		return this.qc;
+		
+	}
+	
 }
