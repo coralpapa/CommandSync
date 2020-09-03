@@ -222,3 +222,13 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+.gradle/6.3/gc.properties
+.gradle/6.3/executionHistory/executionHistory.lock
+.gradle/6.3/fileChanges/last-build.bin
+.gradle/6.3/fileHashes/fileHashes.lock
+.gradle/buildOutputCleanup/buildOutputCleanup.lock
+.gradle/buildOutputCleanup/cache.properties
+.gradle/checksums/checksums.lock
+.gradle/checksums/md5-checksums.bin
+.gradle/checksums/sha1-checksums.bin
+.gradle/vcs-1/gc.properties
