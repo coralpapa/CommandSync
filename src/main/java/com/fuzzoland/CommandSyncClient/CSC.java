@@ -18,7 +18,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class CSC extends JavaPlugin {
 
 	private static CSC instance;
-	private ClientThread client;
 	private List<String> oq = Collections.synchronizedList(new ArrayList<String>());
 	private Integer qc = 0;
 	private String spacer = "@#@";
