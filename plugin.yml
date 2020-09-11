@@ -1,6 +1,6 @@
 name: CommandSync
 main: com.fuzzoland.CommandSyncClient.CSC
-version: 2.6
+version: 2.7
 author: YoFuzzy3
 
 commands:

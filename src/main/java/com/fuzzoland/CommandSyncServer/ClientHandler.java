@@ -1,87 +1,41 @@
 package com.fuzzoland.CommandSyncServer;
+
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
-public class ClientHandler extends Thread {
+public class ClientHandler implements Runnable {
 	
+	private ServerSocket server;
 	private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
+	private Boolean connected = false;
     private Integer heartbeat = 0;
     private String name;
     private String pass;
 
-	public ClientHandler(Socket socket, Integer heartbeat, String pass) throws IOException {
+	public ClientHandler() {
 		
-		this.socket = socket;
-		this.heartbeat = heartbeat;
-		this.pass = pass;
+		connect();
 		
-		out = new PrintWriter(socket.getOutputStream(), true);
-		in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-		Debugger.getInstance().Log(Locale.getInstance().getString("BungeeConnect", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort())));
-		
-		name = in.readLine();
-		
-		if(CSS.getInstance().getC().contains(name)) {
-			
-			Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("NameErrorBungee", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
-		    out.println("n");
-		    socket.close();
-		    return;
-		    
-		}
-		
-		out.println("y");
-		
-		if(!in.readLine().equals(this.pass)) {
-			
-			Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("PassError", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
-			out.println("n");
-			socket.close();
-			return;
-			
-		}
-		
-		out.println("y");
-		String version = in.readLine();
-		
-		if(!version.equals(CSS.getInstance().getDescription().getVersion())) {
-			
-			Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("VersionErrorBungee", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name, version, CSS.getInstance().getDescription().getVersion()));
-		    out.println("n");
-		    out.println(CSS.getInstance().getDescription().getVersion());
-		    socket.close();
-		    return;
-		    
-		}
-		
-		out.println("y");
-		
-		if(!CSS.getInstance().getQC().containsKey(name)) {
-			
-			CSS.getInstance().getQC().put(name, 0);
-		    
-		}
-		
-		CSS.getInstance().getC().add(name);
-		
-		Debugger.getInstance().Log(Locale.getInstance().getString("ConnectFrom", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
+		CSS.getInstance().getProxy().getScheduler().schedule(CSS.getInstance(), this, 10, heartbeat, TimeUnit.MILLISECONDS);
 		
 	}
 
 	public void run() {
 		
-		while(true) {
+		if(connected) {
 			
 			try {
 				
@@ -91,6 +45,7 @@ public class ClientHandler extends Thread {
 					
 					Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("Disconect", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
 					CSS.getInstance().getC().remove(name);
+					connected = false;
 					return;
 					
 				}
@@ -209,8 +164,6 @@ public class ClientHandler extends Thread {
 					CSS.getInstance().getQC().put(name, count);
 				
 				}
-				
-				sleep(heartbeat);
 			
 			} catch(Exception e) {
 			
@@ -219,7 +172,98 @@ public class ClientHandler extends Thread {
 			
 			}
 			
+		} else {
+			
+			connect();
+			
 		}
+		
+	}
+	
+	public void connect() {
+		
+		if(server == null || server.isClosed()) {
+			
+			try {
+				
+				server = new ServerSocket(ConfigManager.getInstance().getPort(), 50, InetAddress.getByName(ConfigManager.getInstance().getIP()));
+				
+				Debugger.getInstance().Log(Locale.getInstance().getString("OpenOn", ConfigManager.getInstance().getIP(), ConfigManager.getInstance().getPort() + ""));
+	
+			} catch(Exception e) {
+				
+				Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+				return;
+				
+			}
+		
+		}
+		
+		try {
+			
+			this.socket = server.accept();
+			this.heartbeat = ConfigManager.getInstance().getHeartBeat();
+			this.pass = ConfigManager.getInstance().getPassword();
+			
+			out = new PrintWriter(socket.getOutputStream(), true);
+			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			Debugger.getInstance().Log(Locale.getInstance().getString("BungeeConnect", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort())));
+			
+			name = in.readLine();
+			
+			if(CSS.getInstance().getC().contains(name)) {
+				
+				Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("NameErrorBungee", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
+			    out.println("n");
+			    socket.close();
+			    return;
+			    
+			}
+			
+			out.println("y");
+			
+			if(!in.readLine().equals(this.pass)) {
+				
+				Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("PassError", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
+				out.println("n");
+				socket.close();
+				return;
+				
+			}
+			
+			out.println("y");
+			String version = in.readLine();
+			
+			if(!version.equals(CSS.getInstance().getDescription().getVersion())) {
+				
+				Debugger.getInstance().Log(Level.WARNING, Locale.getInstance().getString("VersionErrorBungee", name, version, "" + CSS.getInstance().getDescription().getVersion()));
+			    out.println("n");
+			    out.println(CSS.getInstance().getDescription().getVersion());
+			    socket.close();
+			    return;
+			    
+			}
+			
+			out.println("y");
+			
+			if(!CSS.getInstance().getQC().containsKey(name)) {
+				
+				CSS.getInstance().getQC().put(name, 0);
+			    
+			}
+			
+			CSS.getInstance().getC().add(name);
+			
+			Debugger.getInstance().Log(Locale.getInstance().getString("ConnectFrom", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort()), name));
+			
+		} catch(Exception e) {
+			
+			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			return;
+			
+		}
+		
+		connected = true;
 		
 	}
 	

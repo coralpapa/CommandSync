@@ -36,8 +36,6 @@ public class Debugger {
     
     public void debug(String filename, String message, Exception exception) {
     	
-    	// if(!ConfigManager.getInstance().sendDebug()) return;
-    	
     	logger.log(Level.INFO, "Writing to Log: '" + filename + ".txt'");
     	
         try {
@@ -81,7 +79,7 @@ public class Debugger {
     }
     
     public void Log(String message) {
-    	
+
     	Log(Level.INFO, message);
     	
     }
@@ -99,7 +97,7 @@ public class Debugger {
 			logger.log(level, message);
 			
 		} else if(level.equals(Level.INFO)){
-			
+
 			logger.log(level, message);
 			
 		} else {
