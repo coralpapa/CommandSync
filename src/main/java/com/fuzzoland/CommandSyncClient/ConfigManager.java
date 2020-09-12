@@ -1,5 +1,11 @@
 package com.fuzzoland.CommandSyncClient;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.logging.Level;
+
 public class ConfigManager {
 
 	private static ConfigManager instance;
@@ -7,7 +13,7 @@ public class ConfigManager {
 	private String ip = "localhost";
 	private Integer port = 9190;
 	private Integer heartbeat = 100;
-	private String name = "ServerName";
+	private String name = "ClientName";
 	private String pass = "Password";
 	private Boolean debug = false;
 	private Boolean removedata = true;
@@ -29,7 +35,40 @@ public class ConfigManager {
 	public void setup() {
 		
 		config = new SpigotYaml(CSC.getInstance().getDataFolder().toString(), "config.yml");
+		
 		loadConfig();
+		
+		if(getName().equalsIgnoreCase("ClientName")) {
+			
+			try {
+				
+				File file = new File("server.properties");
+				BufferedReader read;
+				read = new BufferedReader(new FileReader(file));
+				String line;
+				
+				while ((line = read.readLine()) != null) {
+					
+					if(line.contains("server-name")) {
+						
+						setName(line.replace("server-name=", ""));
+						
+					}
+					
+				}
+				
+				read.close();
+				
+				Debugger.getInstance().Log(Level.INFO, "Default Client Name. Setting to " + getName());
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+			
+		}
+		
 		saveConfig();
 		
 	}

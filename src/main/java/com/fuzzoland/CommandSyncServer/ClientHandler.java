@@ -3,7 +3,6 @@ package com.fuzzoland.CommandSyncServer;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -13,11 +12,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.scheduler.ScheduledTask;
 
 public class ClientHandler implements Runnable {
-	
-	private ServerSocket server;
+
 	private Socket socket;
+	private ScheduledTask t;
     private PrintWriter out;
     private BufferedReader in;
 	private Boolean connected = false;
@@ -25,18 +25,18 @@ public class ClientHandler implements Runnable {
     private String name;
     private String pass;
 
-	public ClientHandler() {
-		
+	public ClientHandler(Socket socket) {
+
+		this.socket = socket;
 		connect();
-		
-		CSS.getInstance().getProxy().getScheduler().schedule(CSS.getInstance(), this, 10, heartbeat, TimeUnit.MILLISECONDS);
+		t = CSS.getInstance().getProxy().getScheduler().schedule(CSS.getInstance(), this, 10, heartbeat, TimeUnit.MILLISECONDS);
 		
 	}
 
 	public void run() {
-		
+
 		if(connected) {
-			
+
 			try {
 				
 				out.println("heartbeat");
@@ -173,7 +173,7 @@ public class ClientHandler implements Runnable {
 			}
 			
 		} else {
-			
+
 			connect();
 			
 		}
@@ -181,35 +181,33 @@ public class ClientHandler implements Runnable {
 	}
 	
 	public void connect() {
-		
-		if(server == null || server.isClosed()) {
+
+		try {
 			
-			try {
-				
-				server = new ServerSocket(ConfigManager.getInstance().getPort(), 50, InetAddress.getByName(ConfigManager.getInstance().getIP()));
-				
-				Debugger.getInstance().Log(Locale.getInstance().getString("OpenOn", ConfigManager.getInstance().getIP(), ConfigManager.getInstance().getPort() + ""));
-	
-			} catch(Exception e) {
-				
-				Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			ServerSocket server = CSS.getInstance().getServerSocker();
+			
+			if(server == null) {
+
+				Debugger.getInstance().Log(Level.WARNING, "Unable to start Socket");
 				return;
 				
 			}
-		
-		}
-		
-		try {
 			
-			this.socket = server.accept();
+			if(socket == null || socket.isClosed()) {
+
+				this.socket = server.accept();
+			
+			}
+
 			this.heartbeat = ConfigManager.getInstance().getHeartBeat();
 			this.pass = ConfigManager.getInstance().getPassword();
 			
 			out = new PrintWriter(socket.getOutputStream(), true);
 			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			Debugger.getInstance().Log(Locale.getInstance().getString("BungeeConnect", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort())));
 			
 			name = in.readLine();
+
+			Debugger.getInstance().Log(Locale.getInstance().getString("BungeeConnect", socket.getInetAddress().getHostName(), String.valueOf(socket.getPort())));
 			
 			if(CSS.getInstance().getC().contains(name)) {
 				
@@ -258,13 +256,20 @@ public class ClientHandler implements Runnable {
 			
 		} catch(Exception e) {
 			
-			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			//Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+			this.cancel();
 			return;
 			
 		}
 		
 		connected = true;
 		
+	}
+	
+	public void cancel() {
+		
+		CSS.getInstance().getProxy().getScheduler().cancel(t);
+				
 	}
 	
 }
