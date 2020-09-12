@@ -1,33 +1,44 @@
 package com.fuzzoland.CommandSyncServer;
 
 import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-public class ClientListener extends Thread {
+public class ClientListener implements Runnable {
 
-	private Integer heartbeat;
-	private String pass;
+	public ClientListener(Integer heartbeat) {
 
-	public ClientListener(Integer heartbeat, String pass) {
-		
-		this.heartbeat = heartbeat;
-		this.pass = pass;
+		CSS.getInstance().getProxy().getScheduler().schedule(CSS.getInstance(), this, 10, heartbeat, TimeUnit.MILLISECONDS);
 		
 	}
 
 	public void run() {
 		
-		while(true) {
+		ServerSocket server = CSS.getInstance().getServerSocker();
+		
+		if(server == null) {
+
+			return;
 			
-			try {
-				
-				new ClientHandler(CSS.getInstance().server.accept(), heartbeat, pass).start();
-				
-			} catch(IOException e) {
-				
-				Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+		}
+
+		
+		try {
+
+			Socket socket = server.accept();
+		
+			if(socket != null) {
+
+				new ClientHandler(socket);
 				
 			}
+
+		
+		} catch(IOException e) {
+
+			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
 			
 		}
 		

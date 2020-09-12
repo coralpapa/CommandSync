@@ -61,7 +61,7 @@ public class Locale {
     	
         this.locale.clear();
         
-        String loc = this.loc;
+        this.loc = ConfigManager.getInstance().getLanauge();
         
         this.localeFile = new File(CSS.getInstance().getDataFolder(), loc + ".properties");     
         
@@ -142,15 +142,22 @@ public class Locale {
      * @return message, otherwise null
      */
     public String getString(final String key, final boolean removeColors, final String... args) {
+    	
         String out = this.locale.getProperty(key);
+        
         if (out == null) {
-            return ChatColor.RED + "Key \"" + key + "\" not found!" + ChatColor.RESET;
+        
+        	return ChatColor.RED + "Key \"" + key + "\" not found!" + ChatColor.RESET;
+        
         }
 
         MessageFormat mf = this.messageCache.get(out);
+        
         if (mf == null) {
-            mf = new MessageFormat(out);
+        
+        	mf = new MessageFormat(out);
             this.messageCache.put(out, mf);
+        
         }
         
         out = mf.format(args);
@@ -158,10 +165,13 @@ public class Locale {
         out = ChatColor.translateAlternateColorCodes('&', out);
 
         if (removeColors) {
-            out = ChatColor.stripColor(out);
+        
+        	out = ChatColor.stripColor(out);
+        
         }
         
         return out;
+    
     }
     
     /**

@@ -19,14 +19,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import net.md_5.bungee.api.plugin.Plugin;
 
 public class CSS extends Plugin {
 
 	private static CSS instance;
-	public ServerSocket server;
+	private ClientListener clientlistener = null;
+	private ServerSocket server;
 	private Set<String> c = Collections.synchronizedSet(new HashSet<String>());
 	private List<String> oq = Collections.synchronizedList(new ArrayList<String>());
 	private Map<String, List<String>> pq = Collections.synchronizedMap(new HashMap<String, List<String>>());
@@ -43,19 +43,7 @@ public class CSS extends Plugin {
 		
 		Locale.getInstance();
 		
-		try {
-			
-			server = new ServerSocket(ConfigManager.getInstance().getPort(), 50, InetAddress.getByName(ConfigManager.getInstance().getIP()));
-			
-			Debugger.getInstance().Log(Locale.getInstance().getString("OpenOn", ConfigManager.getInstance().getIP(), ConfigManager.getInstance().getPort() + ""));
-			
-			new ClientListener(ConfigManager.getInstance().getHeartBeat(), ConfigManager.getInstance().getPassword()).start();
-			
-		} catch(Exception e) {
-			
-			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
-			
-		}
+		clientlistener = new ClientListener(ConfigManager.getInstance().getHeartBeat());
 		
 		try {
 			
@@ -68,6 +56,8 @@ public class CSS extends Plugin {
 		}
 
 		getProxy().getPluginManager().registerListener(this, new EventListener());
+		
+		Debugger.getInstance().Log(Level.INFO, "Enabled");
 
 	}
 	
@@ -214,6 +204,29 @@ public class CSS extends Plugin {
 			Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
 			
 		}
+		
+	}
+	
+	public ServerSocket getServerSocker() {
+		
+		if(server == null || server.isClosed()) {
+			
+			try {
+				
+				server = new ServerSocket(ConfigManager.getInstance().getPort(), 50, InetAddress.getByName(ConfigManager.getInstance().getIP()));
+				
+				Debugger.getInstance().Log(Locale.getInstance().getString("OpenOn", ConfigManager.getInstance().getIP(), ConfigManager.getInstance().getPort() + ""));
+
+			} catch(Exception e) {
+				
+				Debugger.getInstance().Log(Level.WARNING, e.getMessage(), e);
+				return null;
+				
+			}
+		
+		}
+		
+		return this.server;
 		
 	}
 	

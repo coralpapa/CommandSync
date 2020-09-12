@@ -48,7 +48,7 @@ public class ClientThread extends BukkitRunnable {
 			
 		}
 		
-		connect(false);
+		connect();
 		
 		this.runTaskTimer(CSC.getInstance(), 0, ConfigManager.getInstance().getHeartBeat());
 		
@@ -120,13 +120,13 @@ public class ClientThread extends BukkitRunnable {
 			
 		} else {
 			
-			connect(true);
+			connect();
 			
 		}
 		
 	}
 	
-	private void connect(Boolean sleep) {
+	private void connect() {
 		
 		try {
 			
